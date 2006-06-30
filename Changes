@@ -1,2 +1,6 @@
-00.01 (2006-06-29)
+0.02 (2006-06-30)
+- Now slurp has executed when methods has called and not during creation of the object
+- Add upload method that return the upload info of only one upload form field.
+
+0.01 (2006-06-29)
 - First public release

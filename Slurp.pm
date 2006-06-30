@@ -31,19 +31,18 @@ use warnings;
 
 use Apache::Request;
 
-our $VERSION = '00.01';
+our $VERSION = '0.02';
 
 sub new {
 	my $package = shift;
   my $attribs = shift || {};
   my $self = bless $attribs, $package;
-	$self->_slurp;
 	return $self;
 }
 
 sub _slurp {
 	my $self		= shift;
-	$self->{uploads} = [];
+	$self->{uploads} = {};
 	my $r = Apache::Request->instance( Apache->request );
 	for (my $upload = $r->upload; $upload; $upload = $upload->next) {
 		my $file_info = {};
@@ -62,8 +61,38 @@ sub _slurp {
 			while (my($key, $val) = each %$info) {
 				$file_info->{$key} = $val;
 			}
-			push @{$self->{uploads}}, $file_info;
+			$self->{uploads}->{$file_info->{name}} = $file_info;
 		}
+  }
+}
+
+sub _slurp_single {
+	my $self				= shift;
+	my $upload_name = shift;
+	return $self->{uploads}->{$upload_name} 
+		if (exists $self->{uploads}->{upload_name});
+	my $r = Apache::Request->instance( Apache->request );
+	my $upload = $r->upload($upload_name);
+	my $file_info = {};
+	my $fh = $upload->fh;
+	if (defined $fh) {
+		my $binary;
+		while (<$fh>) {
+				$binary .= $_;
+		}
+		$file_info->{data} 			= $binary;
+		$file_info->{filename} 	= $upload->filename;
+		# IE add all path to filename, remove it
+		$file_info->{filename} =~ s/\w\:\\(.+\\)*//;
+		$file_info->{size} 			= $upload->size;
+		$file_info->{name} 			= $upload->name;
+		$file_info->{type} 			= $upload->type;
+		my $info = $upload->info;
+		while (my($key, $val) = each %$info) {
+			$file_info->{$key} = $val;
+		}
+		$self->{uploads}->{$file_info->{name}} = $file_info;
+		return $file_info;
   }
 }
 
@@ -106,7 +135,51 @@ From the additional header information for the uploaded file
 
 sub uploads {
 	my $self = shift;
-	return wantarray ? @{$self->{uploads}} : $self->{uploads};
+	$self->_slurp;
+	my @uploads = values %{$self->{uploads}};
+	return wantarray ? @uploads : \@uploads;
+}
+
+=head2 upload(form_name)
+
+Return an hash or hashref (based on contest) with infos for the single upload
+The hashref has this structure:
+
+=over 4
+
+=item * data
+
+The binary stream of the file
+
+=item * filename
+
+The filename from the client point of view
+
+=item * size
+
+The size of the uploaded file
+
+=item * name
+
+The name of the form field that uploaded file.
+
+=item * type
+
+The content type of the uploaded file.
+
+=item * other keys 
+
+From the additional header information for the uploaded file
+
+=back
+    
+=cut
+
+sub upload {
+	my $self = shift;
+	my $upload_name = shift;
+	my $ret = $self->_slurp_single($upload_name);
+	return wantarray ? %$ret : $ret;
 }
 
 1;
