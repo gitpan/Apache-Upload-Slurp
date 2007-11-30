@@ -31,7 +31,7 @@ use warnings;
 
 use Apache::Request;
 
-our $VERSION = '0.02';
+our $VERSION = '0.03';
 
 sub new {
 	my $package = shift;
@@ -70,7 +70,7 @@ sub _slurp_single {
 	my $self				= shift;
 	my $upload_name = shift;
 	return $self->{uploads}->{$upload_name} 
-		if (exists $self->{uploads}->{upload_name});
+		if (exists $self->{uploads}->{$upload_name});
 	my $r = Apache::Request->instance( Apache->request );
 	my $upload = $r->upload($upload_name);
 	my $file_info = {};
